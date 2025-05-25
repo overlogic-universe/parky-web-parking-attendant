@@ -6,7 +6,7 @@ export default function ScannerPage() {
   return (
     <>
       <PageMeta title="Parky | Scanner 📲" description="Parking Scanner Parky" />
-      <PageBreadcrumb pageTitle="Parking Scanner 📲" />
+      <PageBreadcrumb pageTitle="Pindai QR Code 📲" />
       <div className="space-y-6">
         <ScannerSection />
       </div>

@@ -2,12 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../configuration";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tab";
-import { ParkingAssignment, ParkingAttendant, ParkingLot, ParkingSchedule } from "../../interface/interface";
+import { db, auth } from "../../configuration"; // pastikan auth di-export dari configuration.ts
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../ui/tab";
+import {
+  ParkingAssignment,
+  ParkingAttendant,
+  ParkingLot,
+  ParkingSchedule,
+} from "../../interface/interface";
 import { LoadingAnimation } from "../ui/loading/LoadingAnimation";
 import SearchInput from "../ui/search";
+import Switch from "../form/switch/Switch";
 
 const DAYS = [
   { key: "monday", label: "Senin" },
@@ -24,16 +41,21 @@ interface ScheduleItem {
   openTime: string;
   closedTime: string;
   attendantName: string;
+  attendantId: string; // tambahkan ini untuk filter by UID
 }
 
 export default function ParkingScheduleSection() {
   const [dataByDay, setDataByDay] = useState<Record<string, ScheduleItem[]>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showMyScheduleOnly, setShowMyScheduleOnly] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log(`Jalannnn`);
+    setCurrentUserId(auth.currentUser?.uid ?? null); // ambil UID user login
+  }, []);
 
+  useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -45,17 +67,25 @@ export default function ParkingScheduleSection() {
           getDocs(collection(db, "parking_attendants")),
         ]);
 
-        const schedules: ParkingSchedule[] = scheduleSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ParkingSchedule));
-        console.log("schedules", schedules);
+        const schedules: ParkingSchedule[] = scheduleSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ParkingSchedule[];
 
-        const assignments: ParkingAssignment[] = assignmentSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ParkingAssignment));
-        console.log("assignments", assignments);
+        const assignments: ParkingAssignment[] = assignmentSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ParkingAssignment[];
 
-        const lots: ParkingLot[] = lotSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ParkingLot));
-        console.log("lots", lots);
+        const lots: ParkingLot[] = lotSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ParkingLot[];
 
-        const attendants: ParkingAttendant[] = attendantSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as ParkingAttendant));
-        console.log("attendants", attendants);
+        const attendants: ParkingAttendant[] = attendantSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ParkingAttendant[];
 
         const groupedData: Record<string, ScheduleItem[]> = {};
 
@@ -64,12 +94,15 @@ export default function ParkingScheduleSection() {
           const items: ScheduleItem[] = [];
 
           for (const schedule of schedulesForDay) {
-            const relatedAssignments = assignments.filter((a) => a.parking_schedule_id === schedule.id);
-            console.log("relatedAssignments", relatedAssignments);
+            const relatedAssignments = assignments.filter(
+              (a) => a.parking_schedule_id === schedule.id
+            );
 
             for (const assignment of relatedAssignments) {
               const lot = lots.find((l) => l.id === assignment.parking_lot_id);
-              const attendant = attendants.find((at) => at.id === assignment.parking_attendant_id);
+              const attendant = attendants.find(
+                (at) => at.id === assignment.parking_attendant_id
+              );
 
               if (lot && attendant) {
                 items.push({
@@ -77,6 +110,7 @@ export default function ParkingScheduleSection() {
                   openTime: schedule.open_time,
                   closedTime: schedule.closed_time,
                   attendantName: attendant.name,
+                  attendantId: attendant.id,
                 });
               }
             }
@@ -84,9 +118,10 @@ export default function ParkingScheduleSection() {
 
           groupedData[day.key] = items;
         }
+
         setDataByDay(groupedData);
       } catch (e) {
-        console.log(`ERROR GET SCHEDULE: ${e}`);
+        console.error("ERROR GET SCHEDULE:", e);
       } finally {
         setLoading(false);
       }
@@ -97,6 +132,15 @@ export default function ParkingScheduleSection() {
 
   return (
     <div className="w-full">
+      {/* Toggle: Jadwal Saya */}
+      <div className="flex items-center gap-2 mb-4">
+        <Switch
+          onChange={setShowMyScheduleOnly}
+          defaultChecked={showMyScheduleOnly} label={"Tampilkan Jadwal Saya Saja"}          
+        />
+      </div>
+
+      {/* Tabs */}
       <Tabs defaultValue="monday" className="w-full">
         <TabsList className="grid grid-cols-7 mb-4">
           {DAYS.map((day) => (
@@ -109,39 +153,75 @@ export default function ParkingScheduleSection() {
         {DAYS.map((day) => {
           const allData = dataByDay[day.key] || [];
 
-          const filteredData = allData.filter((item) => item.lotName.toLowerCase().includes(search.toLowerCase()));
+          // Filter berdasarkan toggle + search
+          const filteredData = allData.filter((item) => {
+            const matchSearch = item.attendantName.toLowerCase().includes(search.toLowerCase());
+            const matchUser = !showMyScheduleOnly || item.attendantId === currentUserId;
+            return matchSearch && matchUser;
+          });
 
           return (
-            <TabsContent key={day.key} value={day.key} className="py-5 overflow-x-scroll sm:overflow-x-hidden rounded-xl border border-gray-300 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-              {/* Search Input */}
-              <SearchInput placeholder="Cari berdasarkan nama tempat parkir..." value={search} onChange={setSearch} />
+            <TabsContent
+              key={day.key}
+              value={day.key}
+              className="py-5 overflow-x-scroll sm:overflow-x-hidden rounded-xl border border-gray-300 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]"
+            >
+              <SearchInput
+                placeholder="Cari berdasarkan nama petugas..."
+                value={search}
+                onChange={setSearch}
+              />
 
-              {/* Loading */}
               {loading ? (
                 <LoadingAnimation />
               ) : filteredData.length > 0 ? (
                 <Table>
                   <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                     <TableRow>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Tempat Parkir</TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Buka</TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Tutup</TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Petugas</TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                        Tempat Parkir
+                      </TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                        Buka
+                      </TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                        Tutup
+                      </TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                        Petugas
+                      </TableCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((item, index) => (
-                      <TableRow key={index} className={`py-5 ${index % 2 !== 1 ? "bg-gray-200 dark:bg-gray-900" : ""} hover:bg-gray-100 dark:hover:bg-gray-800`}>
-                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.lotName}</TableCell>
-                        <TableCell className="py-4 text-green-500 text-theme-sm">{item.openTime}</TableCell>
-                        <TableCell className="py-4 text-red-400 text-theme-sm">{item.closedTime}</TableCell>
-                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.attendantName}</TableCell>
+                      <TableRow
+                        key={index}
+                        className={`py-5 ${
+                          index % 2 !== 1
+                            ? "bg-gray-200 dark:bg-gray-900"
+                            : ""
+                        } hover:bg-gray-100 dark:hover:bg-gray-800`}
+                      >
+                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">
+                          {item.lotName}
+                        </TableCell>
+                        <TableCell className="py-4 text-green-500 text-theme-sm">
+                          {item.openTime}
+                        </TableCell>
+                        <TableCell className="py-4 text-red-400 text-theme-sm">
+                          {item.closedTime}
+                        </TableCell>
+                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">
+                          {item.attendantName}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center text-gray-500 text-theme-sm py-4">Tidak ada jadwal yang cocok</div>
+                <div className="text-center text-gray-500 text-theme-sm py-4">
+                  Tidak ada jadwal yang cocok
+                </div>
               )}
             </TabsContent>
           );

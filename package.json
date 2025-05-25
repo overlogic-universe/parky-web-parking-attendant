@@ -25,7 +25,6 @@
     "dayjs": "^1.11.13",
     "firebase": "^11.6.0",
     "flatpickr": "^4.6.13",
-    "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",

@@ -87,29 +87,6 @@ const navItems: NavItem[] = [
     path: "/schedule",
   },
   {
-    icon: <TableIcon />,
-    name: "Tabel Pengguna",
-    subItems: [
-      { name: "Tabel Mahasiswa", path: "/student-table", pro: false },
-      { name: "Tabel Petugas", path: "/parking-attendant-table", pro: false },
-      { name: "Tabel Tempat Parkir", path: "/parking-lot-table", pro: false },
-    ],
-  },
-  // {
-  //   icon: <TimeIcon />,
-  //   name: "Aktivitas Parkir",
-  //   path: "/histories",
-  // },
-  {
-    icon: <PlusIcon />,
-    name: "Tambah Data",
-    subItems: [
-      { name: "Daftar Mahasiswa Baru", path: "/create-student", pro: false },
-      { name: "Daftar Petugas Baru", path: "/create-parking-attendant", pro: false },
-      { name: "Daftar Tempat Parkir Baru", path: "/create-parking-lot", pro: false },
-    ],
-  },
-  {
     icon: <PlugInIcon />,
     name: "Autentikasi",
     subItems: [{ name: "Keluar", path: "/logout", pro: false }],

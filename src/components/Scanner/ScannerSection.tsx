@@ -6,7 +6,9 @@ import Toast from "../ui/toast";
 
 const ScannerSection: React.FC = () => {
   const [attendantName, setAttendantName] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [scannerKey, setScannerKey] = useState(0);
 
   useEffect(() => {
     const fetchAttendantName = async () => {
@@ -25,9 +27,13 @@ const ScannerSection: React.FC = () => {
   }, []);
 
   const handleScan = async (detectedCodes: any[]) => {
+    console.log("CODEL ", detectedCodes);
     try {
+      if (isProcessing) return; // stop jika masih proses
+
       const result = detectedCodes[0]?.rawValue;
       if (!result) return;
+      setIsProcessing(true);
       const qrCodeId = result.trim();
 
       // Cari student berdasarkan qr_code_id
@@ -156,6 +162,11 @@ const ScannerSection: React.FC = () => {
     } catch (error) {
       console.error(error);
       setToast({ message: "Terjadi kesalahan saat memproses QR Code.", type: "error" });
+    } finally {
+      setTimeout(() => {
+        setIsProcessing(false);
+        setScannerKey((prev) => prev + 1);
+      }, 3000);
     }
   };
 
@@ -164,8 +175,9 @@ const ScannerSection: React.FC = () => {
       <div className="max-w-lg mx-auto p-6">
         <h1 className="text-center text-theme-sm mb-4 text-gray-500 font-bold dark:text-gray-400">SCAN DISINI</h1>
 
-        <div className="w-full border-2 border-brand-500 rounded-xl overflow-hidden">
+        <div className="w-full border-2 border-brand-400 rounded-xl overflow-hidden">
           <Scanner
+            key={scannerKey}
             onScan={(result) => handleScan(result)}
             constraints={{
               facingMode: "user",
