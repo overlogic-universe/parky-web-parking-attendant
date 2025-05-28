@@ -78,22 +78,26 @@ const ScannerSection: React.FC = () => {
         return;
       }
 
-      const scheduleDoc = scheduleSnapshot.docs[0];
-      const scheduleId = scheduleDoc.id;
+      let parkingLotId: string | null = null;
 
-      console.log("SCHEDULE DOC: ", scheduleDoc.id);
-      console.log("SCHEDULE DOC: ", scheduleDoc.data);
+      for (const scheduleDoc of scheduleSnapshot.docs) {
+        const scheduleId = scheduleDoc.id;
 
-      const assignmentQuery = query(collection(db, "parking_assignments"), where("parking_schedule_id", "==", scheduleId), where("parking_attendant_id", "==", auth.currentUser?.uid));
-      const assignmentSnapshot = await getDocs(assignmentQuery);
+        const assignmentQuery = query(collection(db, "parking_assignments"), where("parking_schedule_id", "==", scheduleId), where("parking_attendant_id", "==", auth.currentUser?.uid));
 
-      if (assignmentSnapshot.empty) {
+        const assignmentSnapshot = await getDocs(assignmentQuery);
+
+        if (!assignmentSnapshot.empty) {
+          // Ambil parking_lot_id dari assignment pertama yang cocok
+          parkingLotId = assignmentSnapshot.docs[0].data().parking_lot_id;
+          break; // berhenti begitu menemukan assignment yang cocok
+        }
+      }
+
+      if (!parkingLotId) {
         setToast({ message: "Tidak ada penugasan parkir untuk Anda hari ini.", type: "error" });
         return;
       }
-
-      const assignmentDoc = assignmentSnapshot.docs[0];
-      const parkingLotId = assignmentDoc.data().parking_lot_id;
 
       const now = Timestamp.now();
 
