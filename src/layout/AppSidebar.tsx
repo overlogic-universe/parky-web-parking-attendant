@@ -89,7 +89,10 @@ const navItems: NavItem[] = [
   {
     icon: <PlugInIcon />,
     name: "Autentikasi",
-    subItems: [{ name: "Keluar", path: "/logout", pro: false }],
+    subItems: [
+      { name: "Perbarui Password", path: "/update-password", pro: false },
+      { name: "Keluar", path: "/logout", pro: false },
+    ],
   },
 ];
 

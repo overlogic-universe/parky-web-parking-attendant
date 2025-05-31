@@ -8,6 +8,7 @@ import PrivateRoute from "./layout/PrivateRoute";
 import ParkingSchedulePage from "./pages/ParkingSchedulePage/ParkingSchedulePage";
 import ParkingActivityPage from "./pages/ParkingActivityPage/ParkingActivityPage";
 import ScannerPage from "./pages/ScannerPage/ScannerPage";
+import UpdatePasswordPage from "./pages/UpdatePassword/UpdatePasswordPage";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
             <Route index path="/" element={<ScannerPage />} />
             <Route index path="/activity" element={<ParkingActivityPage />} />
             <Route index path="/schedule" element={<ParkingSchedulePage />} />
+            <Route index path="/update-password" element={<UpdatePasswordPage />} />
           </Route>
 
           {/* Fallback Route (Page Not Found) */}
