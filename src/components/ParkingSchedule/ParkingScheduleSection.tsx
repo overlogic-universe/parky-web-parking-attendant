@@ -142,7 +142,7 @@ export default function ParkingScheduleSection() {
 
       {/* Tabs */}
       <Tabs defaultValue="monday" className="w-full">
-        <TabsList className="grid grid-cols-7 mb-4">
+        <TabsList className="grid sm:grid-cols-7 grid-cols-3 mb-4">
           {DAYS.map((day) => (
             <TabsTrigger key={day.key} value={day.key}>
               {day.label}
