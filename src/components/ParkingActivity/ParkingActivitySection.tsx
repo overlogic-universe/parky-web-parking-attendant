@@ -10,6 +10,7 @@ import SearchInput from "../ui/search";
 import InformationBox from "./InformationBox";
 import { BoxCubeIcon, UserIcon } from "../../icons";
 import { TodayDate } from "../ui/text/TodayDate";
+import { formatTimeWithSecondsWIB } from "../../utils/DateUtil";
 
 interface ActivityItem {
   studentName: string;
@@ -127,8 +128,8 @@ export default function ParkingActivitySection() {
             studentName: student?.name || "-",
             nim: student?.nim || "-",
             vehiclePlate: vehicle?.plate || "-",
-            parkedAt: history?.parked_at ? new Date(history.parked_at.seconds * 1000).toLocaleTimeString() : "-",
-            exitedAt: history?.exited_at ? new Date(history.exited_at.seconds * 1000).toLocaleTimeString() : "-",
+            parkedAt: history?.parked_at ? formatTimeWithSecondsWIB(new Date(history.parked_at.seconds * 1000)) : "-",
+            exitedAt: history?.exited_at ? formatTimeWithSecondsWIB(new Date(history.exited_at.seconds * 1000)) : "-",
             status: history?.status || "-",
           };
         });
