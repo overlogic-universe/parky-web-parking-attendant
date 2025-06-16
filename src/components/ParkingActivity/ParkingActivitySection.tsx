@@ -65,7 +65,6 @@ export default function ParkingActivitySection() {
         const students: Student[] = studentsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Student));
         const vehicles: Vehicle[] = vehiclesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Vehicle));
 
-        // Cari attendant dengan ID user saat ini
         const currentAttendant = parkingAttendants.find((att) => att.id === auth.currentUser?.uid);
         if (!currentAttendant) {
           setData(null);
@@ -73,25 +72,50 @@ export default function ParkingActivitySection() {
           return;
         }
 
-        const todaySchedules = parkingSchedules.filter((schedule) => schedule.day_of_week === dayOfWeek && !schedule.is_closed);
-        const todayScheduleIds = todaySchedules.map((schedule) => schedule.id);
+        // Only schedules that match today's day
+        const todaySchedules = parkingSchedules.filter((s) => s.day_of_week === dayOfWeek);
+        const todayScheduleIds = todaySchedules.map((s) => s.id);
 
-        const todayAssignments = parkingAssignments.filter((assignment) => assignment.parking_attendant_id === currentAttendant.id && todayScheduleIds.includes(assignment.parking_schedule_id));
+        // Assignments for today for current attendant (include deleted)
+        const todayAssignments = parkingAssignments.filter((a) => a.parking_attendant_id === currentAttendant.id && todayScheduleIds.includes(a.parking_schedule_id));
 
         const activeLotIds = parkingLots.filter((lot) => lot.is_active).map((lot) => lot.id);
-        const validAssignment = todayAssignments.find((a) => activeLotIds.includes(a.parking_lot_id));
 
-        if (!validAssignment) {
+        // Prioritize active & not-deleted assignment
+        const activeAssignment = todayAssignments.find((a) => activeLotIds.includes(a.parking_lot_id) && !a.deleted_at);
+
+        const assignmentToUse = activeAssignment || todayAssignments.find((a) => activeLotIds.includes(a.parking_lot_id));
+
+        if (!assignmentToUse) {
           setData(null);
           setLoading(false);
           return;
         }
 
-        const lot = parkingLots.find((l) => l.id === validAssignment.parking_lot_id);
-        const activitiesForLot = parkingActivities.filter((activity) => activity.parking_lot_id === lot?.id && activity.created_at.seconds >= startTimestamp.seconds);
+        const lot = parkingLots.find((l) => l.id === assignmentToUse.parking_lot_id);
 
+        if (!lot) {
+          setData(null);
+          setLoading(false);
+          return;
+        }
+
+        const activitiesForLot = parkingActivities.filter((activity) => activity.parking_lot_id === lot.id && activity.created_at.seconds >= startTimestamp.seconds);
+
+        // Check if assignment or schedule deleted
+        const relatedSchedule = parkingSchedules.find((s) => s.id === assignmentToUse.parking_schedule_id);
+        const isAssignmentDeleted = assignmentToUse.deleted_at != null;
+        const isScheduleDeleted = relatedSchedule?.deleted_at != null;
+
+        // CASE: If assignment & schedule are deleted and no activities => skip
+        if ((isAssignmentDeleted || isScheduleDeleted) && activitiesForLot.length === 0) {
+          setData(null);
+          setLoading(false);
+          return;
+        }
+
+        // Continue processing if activity exists
         const latestActivity = activitiesForLot.sort((a, b) => b.updated_at.seconds - a.updated_at.seconds)[0];
-
         const vehicleInCount = latestActivity?.vehicle_in_count || 0;
 
         const activities: ActivityItem[] = activitiesForLot.map((activity) => {
@@ -112,7 +136,7 @@ export default function ParkingActivitySection() {
         const lotData: TabData = {
           lotId: lot?.id || "-",
           lotName: lot?.name || "-",
-          vehicleInCount: vehicleInCount,
+          vehicleInCount,
           maxCapacity: lot?.max_capacity || 0,
           attendantName: currentAttendant.name,
           activities,
@@ -131,13 +155,13 @@ export default function ParkingActivitySection() {
 
   if (loading) return <LoadingAnimation />;
 
-  if (!data) return <p className="text-center text-gray-500 py-10">Tidak ada data aktivitas parkir untuk Anda hari ini.</p>;
+  if (!data) return <div className="w-full text-center border border-yellow-400 rounded-xl py-8 text-yellow-600 font-semibold">Anda belum dijadwalkan hari ini.</div>;
 
   const filteredActivities = data.activities.filter((activity) => activity.studentName.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="w-full">
-      <TodayDate/>
+      <TodayDate />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <InformationBox icon={<BoxCubeIcon className="text-gray-800 size-6 dark:text-white/90" />} title="Kapasitas Parkir" value={`${data.vehicleInCount} / ${data.maxCapacity}`} />
         <InformationBox icon={<UserIcon className="text-gray-800 size-6 dark:text-white/90" />} title="Petugas Parkir" value={data.attendantName} />

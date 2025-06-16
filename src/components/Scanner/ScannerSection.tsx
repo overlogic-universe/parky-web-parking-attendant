@@ -9,6 +9,7 @@ const ScannerSection: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [scannerKey, setScannerKey] = useState(0);
+  const [isScheduledToday, setIsScheduledToday] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchAttendantName = async () => {
@@ -24,6 +25,58 @@ const ScannerSection: React.FC = () => {
     };
 
     fetchAttendantName();
+  }, []);
+
+  useEffect(() => {
+    const checkScheduleAssignment = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const today = new Date();
+      const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const todayName = days[today.getDay()];
+
+      try {
+        const scheduleQuery = query(collection(db, "parking_schedules"), where("day_of_week", "==", todayName));
+        const scheduleSnapshot = await getDocs(scheduleQuery);
+
+        let hasValidAssignment = false;
+
+        for (const scheduleDoc of scheduleSnapshot.docs) {
+          const scheduleId = scheduleDoc.id;
+
+          const assignmentQuery = query(collection(db, "parking_assignments"), where("parking_schedule_id", "==", scheduleId), where("parking_attendant_id", "==", user.uid));
+          const assignmentSnapshot = await getDocs(assignmentQuery);
+
+          for (const assignmentDoc of assignmentSnapshot.docs) {
+            const assignment = assignmentDoc.data();
+
+            // Skip jika assignment memiliki deleted_at
+            if (assignment.deleted_at) continue;
+
+            // Periksa apakah parking lot-nya aktif
+            const lotSnap = await getDoc(doc(db, "parking_lots", assignment.parking_lot_id));
+            if (!lotSnap.exists()) continue;
+
+            const lot = lotSnap.data();
+            if (!lot.is_active) continue;
+
+            // Ada assignment valid
+            hasValidAssignment = true;
+            break;
+          }
+
+          if (hasValidAssignment) break;
+        }
+
+        setIsScheduledToday(hasValidAssignment);
+      } catch (error) {
+        console.error("Error checking schedule assignment:", error);
+        setIsScheduledToday(false);
+      }
+    };
+
+    checkScheduleAssignment();
   }, []);
 
   const handleScan = async (detectedCodes: any[]) => {
@@ -177,20 +230,18 @@ const ScannerSection: React.FC = () => {
   return (
     <section className="py-5 overflow-x-scroll sm:overflow-x-hidden rounded-xl border border-gray-300 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-lg mx-auto p-6">
-        <h1 className="text-center text-theme-sm mb-4 text-gray-500 font-bold dark:text-gray-400">SCAN DISINI</h1>
-
-        <div className="w-full border-2 border-brand-400 rounded-xl overflow-hidden">
-          <Scanner
-            key={scannerKey}
-            onScan={(result) => handleScan(result)}
-            constraints={{
-              facingMode: "user",
-            }}
-            styles={{
-              container: { width: "100%" },
-            }}
-          />
-        </div>
+        {isScheduledToday === null ? (
+          <p className="text-center text-gray-500">Memuat jadwal...</p>
+        ) : isScheduledToday ? (
+          <>
+            <h1 className="text-center text-theme-sm mb-4 text-gray-500 font-bold dark:text-gray-400">SCAN DISINI</h1>
+            <div className="w-full border-2 border-brand-400 rounded-xl overflow-hidden">
+              <Scanner key={scannerKey} onScan={(result) => handleScan(result)} constraints={{ facingMode: "user" }} styles={{ container: { width: "100%" } }} />
+            </div>
+          </>
+        ) : (
+          <div className="w-full text-center border border-yellow-400 rounded-xl py-8 text-yellow-600 font-semibold">Anda belum dijadwalkan hari ini.</div>
+        )}
 
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>

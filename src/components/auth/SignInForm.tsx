@@ -60,6 +60,15 @@ export default function SignInForm() {
         return;
       }
 
+      const attendantData = userDoc.data();
+
+      // Cek apakah admin sudah dihapus (soft delete)
+      if (attendantData.deleted_at !== null && attendantData.deleted_at !== undefined) {
+        await auth.signOut();
+        setShowLoginErrorAlert("Login gagal. Email atau kata sandi salah!");
+        return;
+      }
+
       setShowLoginErrorAlert("");
       navigate("/");
     } catch (err: unknown) {

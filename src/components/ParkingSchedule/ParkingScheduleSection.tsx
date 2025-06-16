@@ -1,27 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db, auth } from "../../configuration"; // pastikan auth di-export dari configuration.ts
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../ui/tab";
-import {
-  ParkingAssignment,
-  ParkingAttendant,
-  ParkingLot,
-  ParkingSchedule,
-} from "../../interface/interface";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tab";
+import { ParkingAssignment, ParkingAttendant, ParkingLot, ParkingSchedule } from "../../interface/interface";
 import { LoadingAnimation } from "../ui/loading/LoadingAnimation";
 import SearchInput from "../ui/search";
 import Switch from "../form/switch/Switch";
@@ -61,10 +45,10 @@ export default function ParkingScheduleSection() {
         setLoading(true);
 
         const [scheduleSnap, assignmentSnap, lotSnap, attendantSnap] = await Promise.all([
-          getDocs(collection(db, "parking_schedules")),
-          getDocs(collection(db, "parking_assignments")),
-          getDocs(collection(db, "parking_lots")),
-          getDocs(collection(db, "parking_attendants")),
+          getDocs(query(collection(db, "parking_schedules"), where("deleted_at", "==", null))),
+          getDocs(query(collection(db, "parking_assignments"), where("deleted_at", "==", null))),
+          getDocs(query(collection(db, "parking_lots"), where("deleted_at", "==", null))),
+          getDocs(query(collection(db, "parking_attendants"), where("deleted_at", "==", null))),
         ]);
 
         const schedules: ParkingSchedule[] = scheduleSnap.docs.map((doc) => ({
@@ -94,15 +78,11 @@ export default function ParkingScheduleSection() {
           const items: ScheduleItem[] = [];
 
           for (const schedule of schedulesForDay) {
-            const relatedAssignments = assignments.filter(
-              (a) => a.parking_schedule_id === schedule.id
-            );
+            const relatedAssignments = assignments.filter((a) => a.parking_schedule_id === schedule.id);
 
             for (const assignment of relatedAssignments) {
               const lot = lots.find((l) => l.id === assignment.parking_lot_id);
-              const attendant = attendants.find(
-                (at) => at.id === assignment.parking_attendant_id
-              );
+              const attendant = attendants.find((at) => at.id === assignment.parking_attendant_id);
 
               if (lot && attendant) {
                 items.push({
@@ -134,10 +114,7 @@ export default function ParkingScheduleSection() {
     <div className="w-full">
       {/* Toggle: Jadwal Saya */}
       <div className="flex items-center gap-2 mb-4">
-        <Switch
-          onChange={setShowMyScheduleOnly}
-          defaultChecked={showMyScheduleOnly} label={"Tampilkan Jadwal Saya Saja"}          
-        />
+        <Switch onChange={setShowMyScheduleOnly} defaultChecked={showMyScheduleOnly} label={"Tampilkan Jadwal Saya Saja"} />
       </div>
 
       {/* Tabs */}
@@ -161,16 +138,8 @@ export default function ParkingScheduleSection() {
           });
 
           return (
-            <TabsContent
-              key={day.key}
-              value={day.key}
-              className="py-5 overflow-x-scroll sm:overflow-x-hidden rounded-xl border border-gray-300 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]"
-            >
-              <SearchInput
-                placeholder="Cari berdasarkan nama petugas..."
-                value={search}
-                onChange={setSearch}
-              />
+            <TabsContent key={day.key} value={day.key} className="py-5 overflow-x-scroll sm:overflow-x-hidden rounded-xl border border-gray-300 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+              <SearchInput placeholder="Cari berdasarkan nama petugas..." value={search} onChange={setSearch} />
 
               {loading ? (
                 <LoadingAnimation />
@@ -178,50 +147,25 @@ export default function ParkingScheduleSection() {
                 <Table>
                   <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                     <TableRow>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                        Tempat Parkir
-                      </TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                        Buka
-                      </TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                        Tutup
-                      </TableCell>
-                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                        Petugas
-                      </TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Tempat Parkir</TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Buka</TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Tutup</TableCell>
+                      <TableCell className="ps-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Petugas</TableCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((item, index) => (
-                      <TableRow
-                        key={index}
-                        className={`py-5 ${
-                          index % 2 !== 1
-                            ? "bg-gray-200 dark:bg-gray-900"
-                            : ""
-                        } hover:bg-gray-100 dark:hover:bg-gray-800`}
-                      >
-                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">
-                          {item.lotName}
-                        </TableCell>
-                        <TableCell className="py-4 text-green-500 text-theme-sm">
-                          {item.openTime}
-                        </TableCell>
-                        <TableCell className="py-4 text-red-400 text-theme-sm">
-                          {item.closedTime}
-                        </TableCell>
-                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">
-                          {item.attendantName}
-                        </TableCell>
+                      <TableRow key={index} className={`py-5 ${index % 2 !== 1 ? "bg-gray-200 dark:bg-gray-900" : ""} hover:bg-gray-100 dark:hover:bg-gray-800`}>
+                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.lotName}</TableCell>
+                        <TableCell className="py-4 text-green-500 text-theme-sm">{item.openTime}</TableCell>
+                        <TableCell className="py-4 text-red-400 text-theme-sm">{item.closedTime}</TableCell>
+                        <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.attendantName}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center text-gray-500 text-theme-sm py-4">
-                  Tidak ada jadwal yang cocok
-                </div>
+                <div className="text-center text-gray-500 text-theme-sm py-4">Tidak ada jadwal yang cocok</div>
               )}
             </TabsContent>
           );
