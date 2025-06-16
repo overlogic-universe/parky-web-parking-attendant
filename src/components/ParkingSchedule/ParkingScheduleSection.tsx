@@ -157,8 +157,8 @@ export default function ParkingScheduleSection() {
                     {filteredData.map((item, index) => (
                       <TableRow key={index} className={`py-5 ${index % 2 !== 1 ? "bg-gray-200 dark:bg-gray-900" : ""} hover:bg-gray-100 dark:hover:bg-gray-800`}>
                         <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.lotName}</TableCell>
-                        <TableCell className="py-4 text-green-500 text-theme-sm">{item.openTime}</TableCell>
-                        <TableCell className="py-4 text-red-400 text-theme-sm">{item.closedTime}</TableCell>
+                        <TableCell className="py-4 text-green-500 text-theme-sm">{item.openTime} WIB</TableCell>
+                        <TableCell className="py-4 text-red-400 text-theme-sm">{item.closedTime} WIB</TableCell>
                         <TableCell className="py-4 text-gray-800 text-theme-sm dark:text-white/90">{item.attendantName}</TableCell>
                       </TableRow>
                     ))}
