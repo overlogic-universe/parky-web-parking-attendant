@@ -5,7 +5,7 @@ import { auth, db } from "../../configuration";
 import Toast from "../ui/toast";
 
 const ScannerSection: React.FC = () => {
-  const [attendantName, setAttendantName] = useState("");
+  const [_, setAttendantName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [scannerKey, setScannerKey] = useState(0);
